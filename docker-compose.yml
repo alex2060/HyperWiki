@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: &app app
+    restart: "no"
+    command: ["pip", "install" ,"mysql-connector-python" ]
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+    env_file: &envfile
+      - env.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./App:/App
+    depends_on:
+      - database
+
+  database:    
+    platform: linux/x86_64
+    image: mysql:5.6
+    restart: always
+    env_file: *envfile
+    volumes:
+      - ~/.mdbdata/App:/var/lib/mysql
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+
+
+  worker:
+    build: .
+    image: *app
+    restart: "no"
+    env_file: *envfile
+    command: ["celery", "--app=worker.worker.app", "worker", "--concurrency=1", "--hostname=worker@%h", "--loglevel=INFO"]
+    volumes:
+      - ./App:/App
+    depends_on:
+      - broker
+    
+  celery-beat:
+    build: .
+    image: *app
+    env_file: *envfile
+    command: python3 -m celery --app=worker.worker.app beat -l debug -f /var/log/App-celery-beat.log  --pidfile=/tmp/celery-beat.pid
+    volumes:
+      - ./App:/App
+    depends_on:
+      - worker
+    
+  flower:
+    image: zoomeranalytics/flower:0.9.2-4.0.2-2
+    restart: "no"
+    env_file: *envfile
+    ports:
+      - "5555:5555"
+    depends_on:
+      - broker
+
+  broker:
+    image: rabbitmq:3
+    env_file: *envfile
+    ports:
+      - 5672:5672
+
+  mysql-server:
+    image: mysql:8.0.19
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+    volumes:
+      - ./data/db:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.0.1
+    restart: always
+    environment:
+      PMA_HOST: mysql-server
+      PMA_USER: root
+      PMA_PASSWORD: secret
+    ports:
+      - "5003:80"
+volumes:
+  mysql-data:
+
+
+
