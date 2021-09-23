@@ -16,6 +16,7 @@ import braintree
 from django.core.mail import send_mail
 from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
+
 def try_to_connect():
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
@@ -630,6 +631,7 @@ def funtion_make_traid(username, password ,traid_money_type,traid_money_amount,r
 		} 
 		return json.dumps(dictionary, indent = 4)
 	traidid=get_random_string(64)
+	checkandadd_money_type(username,traid_money_type,cnx)
 	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+username+"_"+traid_money_type+"\'")
 	cursor = cnx.cursor()
 	cursor.execute(Q0)
@@ -694,6 +696,7 @@ def compleat_traid_comand(user,password,traid_id,cnx):
 		}
 		return json.dumps(dictionary, indent = 4)
 	#verifies theres enough money user acount
+	checkandadd_money_type(user,traid_request_type,cnx)
 	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+user+"_"+traid_request_type+"\'")
 	cursor = cnx.cursor()
 	cursor.execute(Q0)
@@ -707,12 +710,14 @@ def compleat_traid_comand(user,password,traid_id,cnx):
 		  "response": "No_Funds",
 		}
 		return json.dumps(dictionary, indent = 4)
+	checkandadd_money_type(user,traid_request_type,cnx)
 	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+user+"_"+traid_request_type+"';")
 	cursor = cnx.cursor()
 	cursor.execute(U1)
 	cnx.commit()
 
 	#put money gained form train to taker of traid
+	checkandadd_money_type(reciver,traid_request_type,cnx)
 	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+reciver+"_"+traid_request_type+"\'")
 	cursor = cnx.cursor()
 	cursor.execute(Q0)
@@ -733,6 +738,7 @@ def compleat_traid_comand(user,password,traid_id,cnx):
 	amnountleft=money+traid_money_amount
 
 	#add money to user acount
+	checkandadd_money_type(reciver,traid_mony_type,cnx)
 	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+user+"_"+traid_mony_type+"';")
 	cursor = cnx.cursor()
 	cursor.execute(U1)
@@ -790,78 +796,6 @@ def get_key2(path,ledgure_name,keyname,password):
 	#print(stingout)
 	return [True,stingout,path+ledgure_name]
 
-#add crypto to user acount
-def add_crypto(uname,password,path,key,name,lname,cnx):
-	if (usercheck_conect(uname,password,cnx)==False):
-		return "No_user"
-	is_user=usercheck_conect(uname,password,cnx)
-	if is_user=="False" or uname=="NULL":
-		dictionary ={ 
-		  "response": "NO_user",
-		}
-		return json.dumps(dictionary, indent = 4)	
-	val = [False,path+"check_key.php?name="+key,path+"check_key.php?name="+key,""]
-	val = get_key(path,lname,name,key)
-	#val = get_key(path,lname,name,key)
-	if (val[0]==True):
-		random_string=""
-		for _ in range(100):
-		    random_integer = random.randint(65, 80)
-		    random_string += (chr(random_integer))
-		passwordCandidate = random_string
-		ADD="INSERT INTO `crypto3` (`id_section`, `item_name`, `url`, `added`, `cached`, `used`) VALUES (\'"+random_string+"\', \'"+val[2]+"\', \'"+val[1]+"\', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'NOT');"
-		cursor = cnx.cursor()
-		cursor.execute(ADD)
-		cnx.commit()
-		Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\' ")
-		cursor = cnx.cursor()
-		cursor.execute(Q0)
-		for row in cursor:
-			number_of_users=row[0]
-		if (number_of_users==0):
-			query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+uname+"\', \'"+uname+"_"+val[2]+"\', \'"+val[2]+"\', '1');")
-			cursor = cnx.cursor()
-			cursor.execute(query2)
-			cnx.commit()
-			dictionary ={ 
-			  "response": "1",
-			}
-			return json.dumps(dictionary, indent = 4)
-		else:
-			Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\'")
-			cursor = cnx.cursor()
-			cursor.execute(Q0)
-			for row in cursor:
-				money=row[0]
-			amnountleft=money+1
-			U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+uname+"_"+val[2]+"';")
-			cursor = cnx.cursor()
-			cursor.execute(U1)
-			cnx.commit()
-			dictionary ={ 
-			  "response": str(amnountleft),
-			}
-			return json.dumps(dictionary, indent = 4)	
-	else:
-		dictionary ={ 
-		  "response": "NO_key"+val[1]+" "+val[2],
-		}
-		return json.dumps(dictionary, indent = 4)
-
-#adds money type to user acount if its not there and makes it zero 
-def checkandadd_money_type(user,money,cnx):
-	#adds a money collum if there is no money avaible
-	Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+user+"_"+money+"\' ")
-	cursor = cnx.cursor()
-	cursor.execute(Q0)
-	for row in cursor:
-		number_of_users=row[0]
-	if (number_of_users==0):
-		query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+user+"\', \'"+user+"_"+money+"\', \'"+money+"\', '0');")
-		cursor = cnx.cursor()
-		cursor.execute(query2)
-		cnx.commit()
-	return
 
 #add crypto to user acount
 def add_crypto(uname,password,path,key,name,lname,cnx):
