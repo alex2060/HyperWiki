@@ -1,17 +1,12 @@
 
 
-
-
-
-
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Add</title>
+  <title>Make Traid</title>
   <!-- bootstrap link start -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
     integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
@@ -25,10 +20,7 @@
   <style>
   .themainbutton{
     min-width: 220px;
-
   }
-  
-
   </style>
 </head>
 
@@ -37,12 +29,10 @@
 <body style="background-color: #24222a;">
 
   <div class="container ">
-
-
-
     <div class=" d-flex justify-content-center">
-      <form action="doit" class="mt-3">
-          <label for="uname" class="text-white">add_curancy</label>
+      <div>
+
+          <div id = "stuff"> <label for="uname" class="text-white">Make Traid</label></div>
         </br>
         <div class="form-group">
           <label for="uname" class="text-white">User Name</label>
@@ -50,46 +40,64 @@
         </div>
 
         <div class="form-group">
-          <label for="uname" class="text-white">Pass_word</label>
-          <input type="text" class="form-control" id="user" name="user" placeholder="User Name" value="">
+          <label for="uname" class="text-white">Password</label>
+          <input type="text" class="form-control" id="password" name="password" placeholder="Passwords" value="">
         </div>
-
         <div class="form-group">
-          <label for="uname" class="text-white">ledgure_path</label>
-          <input type="text" class="form-control" id="user" name="path" placeholder="User Name" value="">
+          <label for="uname" class="text-white">traid_id</label>
+          <input type="text" class="form-control" id="traid_id" name="traid_id" placeholder="Passwords" value="">
         </div>
 
-        <div class="form-group">
-          <label for="uname" class="text-white">name_id</label>
-          <input type="text" class="form-control" id="user" name="nameid" placeholder="User Name" value="">
-        </div>
 
-        <div class="form-group">
-          <label for="uname" class="text-white">hashword</label>
-          <input type="text" class="form-control" id="user" name="hash" placeholder="User Name" value="">
-        </div>
 
-        <div class="form-group">
-          <label for="uname" class="text-white">type</label>
-          <select name = "type" id = "type" >
-              <option value = "0" selected>normal 0</option>
-              <option value = "1">normal 1</option>
-              <option value = "2">normal 2</option>
-              <option value = "3">normal 3</option>
-              <option value = "4">normal 4</option>
-              <option value = "5">normal 5</option>
-           </select>
-        </div>
 
-        <button type="submit" class="btn btn-primary" value="Submit">GO</button>
+        <button class="btn btn-primary" onclick="add_user()">Make Traid</button>
 
-      </form>
+      </div>
 
-    </div>
+
+      </div>
+
   </div>
+</body>
+</html>
+
+<script type="text/javascript">
+
+
+function add_user(){
 
 
 
+//http://localhost:8001/doit?user=myuser3&password=pass&traid_id=bvmrphmjgflutxuqidazavnulqiwkoopgctzotsqvvnmehvanvjeywfmwzkxmrun&action_type=fintraid
+myval="user="+document.getElementById("user").value+"&action_type=fintraid&password="+document.getElementById("password").value+"&traid_id="+document.getElementById("traid_id").value;
+
+alert(myval);
+send_Url="(!P???!???P!)?"+myval
+
+post_responce(send_Url,send_alert,"varible");
+
+}
+
+function send_alert(A,B){
+  myvalue=JSON.parse(A);
+  console.log(myvalue);
+
+  document.getElementById("stuff").innerHTML= "<label for=\"uname\" class=\"text-white\">"+A+"</label></div>";
+}
+
+function post_responce(path,func,varible){
+
+  console.log(path);
+  fetch(path).then(
+      ( response) => {
+          return response.text();
+      })
+      .then((html) => {
+          func(  html.trim()  , varible )
+      });
+}
+</script>
 
 
 

@@ -1,23 +1,12 @@
 
 
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Add</title>
+  <title>Make Traid</title>
   <!-- bootstrap link start -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
     integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
@@ -31,43 +20,15 @@
   <style>
   .themainbutton{
     min-width: 220px;
-
   }
-  
-
   </style>
 </head>
 
 </br>
 </br>
 <body style="background-color: #24222a;">
-
-  <div class="container ">
-
-
-
-    <div class=" d-flex justify-content-center">
-      <form action="doit" class="mt-3">
-          <label for="uname" class="text-white">check_user </label>
-        </br>
-        <div class="form-group">
-          <label for="uname" class="text-white">User Name</label>
-          <input type="text" class="form-control" id="user" name="user" placeholder="User Name" value="">
-        </div>
+<h1><div id = "stuff"> <label for="uname" class="text-white">Make Traid</label></div></h1>
 
 
 
-
-
-        <button type="submit" class="btn btn-primary" value="Submit">Login</button>
-
-      </form>
-
-    </div>
-  </div>
-
-
-
-
-
-
+</body>

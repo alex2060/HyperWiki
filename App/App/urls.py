@@ -22,6 +22,8 @@ router = routers.DefaultRouter()
 
 urlpatterns = [
     path('', views.print_user,name=''),
-    path('doit', views.doit,name='doit')
+    path('doit', views.doit,name='doit'),
+    path('payment_gateway', views.payment_gateway,name='payment_gateway'),
+    path('checkouts',views.create_checkout,name='create_checkout')
 
 ]

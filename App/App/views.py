@@ -12,16 +12,115 @@ import string
 import requests
 import hashlib
 import json
-
-#mysql connection function 
-#not called by user
+import braintree
+from django.core.mail import send_mail
+from django.shortcuts import render
+from django.views.decorators.clickjacking import xframe_options_exempt
 def try_to_connect():
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
 
+#home page
+def print_user(req):
+    f = open("home.html", "r")
+    out= f.read()
+    f.close()
 
-#makes randome string that will probaly be transfomred with hash
-#not called by user
+    return HttpResponse( out )
+
+#payment gateway for items and keys
+def payment_gateway(req):
+    gateway = braintree.BraintreeGateway(
+	    braintree.Configuration(
+	        environment=braintree.Environment.Sandbox,
+	        merchant_id="x7h65pb7jq88w5qw",
+	        public_key="5pw64887tvj3qjym",
+	        private_key="500e0113aac551b7715d01cbc218c0f0",
+	    )
+    )
+    client_token=gateway.client_token.generate()
+    f = open("new.html", "r")
+    out= f.read()
+    f.close()
+    item = "";
+    try:
+        item=req.GET["item"]
+    except:
+        pass
+    cnx = try_to_connect()
+    sql= "SELECT `path`,`url` FROM `items` WHERE `itemname` LIKE \'"+item+"\';"
+        
+    cursor = cnx.cursor()
+    cursor.execute(sql)
+    counter=0
+    for row in cursor:
+        counter=counter+1
+        amount  = row[0]
+    if counter==0:
+        return HttpResponse("noitem")
+    out = out.replace('(!C???C!)',  client_token )
+    out = out.replace('(!A???A!)',  amount )
+    out = out.replace('(!I???I!)',  item )
+    cnx = try_to_connect()
+
+
+    return HttpResponse(out)
+
+#payment retun
+def create_checkout(request):
+    gateway = braintree.BraintreeGateway(
+        braintree.Configuration(
+        environment=braintree.Environment.Sandbox,
+        merchant_id="x7h65pb7jq88w5qw",
+        public_key="5pw64887tvj3qjym",
+        private_key="500e0113aac551b7715d01cbc218c0f0",
+        )
+    )
+    result = gateway.transaction.sale({
+        'amount': request.POST['amount'],
+        'payment_method_nonce': request.POST['payment_method_nonce'],
+        'options': {
+        "submit_for_settlement": True
+        }
+    })
+    if result.is_success or result.transaction:
+        print("in here")
+        TRANSACTION_SUCCESS_STATUSES = [
+   			braintree.Transaction.Status.Authorized,
+    		braintree.Transaction.Status.Authorizing,
+    		braintree.Transaction.Status.Settled,
+   			braintree.Transaction.Status.SettlementConfirmed,
+    		braintree.Transaction.Status.SettlementPending,
+    		braintree.Transaction.Status.Settling,
+    		braintree.Transaction.Status.SubmittedForSettlement
+        ]
+        print(request.POST['amount'])
+        val = gateway.transaction.find(result.transaction.id)
+        lastcheck = val.status in TRANSACTION_SUCCESS_STATUSES
+        item = "";
+        cnx = try_to_connect()
+        sql = "SELECT `url` FROM `items` WHERE `itemname` LIKE \'"+request.POST['Item']+"\' AND `path` LIKE \'"+request.POST['amount']+"\'"
+        cursor = cnx.cursor()
+        cursor.execute(sql)
+        counter=0
+        myvalue=""
+        for row in cursor:
+            counter=counter+1
+            url  = row[0]
+            x = requests.get(url)
+            myvalue = x.content.decode('utf-8')
+        f = open("done.html", "r")
+        out= f.read()
+        f.close()
+        if result.is_success:
+            out = out.replace('(!I???I!)',  str(myvalue) )
+            return HttpResponse( out )
+        else:
+        	return HttpResponse("Failed to prossess")
+    else:
+    	return HttpResponse("Failed to prossess")
+
+#gets randome sting of chars to be hashed
 def get_random_string(length):
     letters = string.ascii_lowercase
     result_str=""
@@ -29,8 +128,6 @@ def get_random_string(length):
     	result_str=result_str+random.choice(letters)
     return result_str
 
-
-#checks user creds
 #not called by user
 def usercheck_conect(uname,password,cnx):
 	if uname=="NULL":
@@ -45,9 +142,7 @@ def usercheck_conect(uname,password,cnx):
 		return "True"
 	return "False"
 
-
 #Adds user to database
-#http://localhost:8000/doit?action_type=adduser&password=&email=&user=
 def add_user(uname,password,email,cnx,return_var_type):
 	sql1 = "SELECT * FROM `a_final_users_table` WHERE `uname` LIKE \'"+uname+"\'";
 	cursor = cnx.cursor()
@@ -55,6 +150,7 @@ def add_user(uname,password,email,cnx,return_var_type):
 	counter=0
 	for row in cursor:
 		counter=counter+1
+	#adds fame money to there acount
 	if counter==0:
 		sql="INSERT INTO `a_final_users_table` (`hashword`, `uname`, `email`,`time`) VALUES (\'"+password+"\', \'"+uname+"\', \'"+email+"]',CURRENT_TIMESTAMP);";
 		cursor = cnx.cursor()
@@ -63,6 +159,23 @@ def add_user(uname,password,email,cnx,return_var_type):
 		dictionary ={ 
 		  "response": "ADDED_USER"
 		} 
+		query = ("INSERT INTO `job_usertable` (`username`, `password`, `creation`, `email`) VALUES (\'"+uname+"\', \'"+password+"\', CURRENT_TIMESTAMP, \'"+email+"\');")
+		#print(query)
+		cursor = cnx.cursor()
+		cursor.execute(query)
+		cnx.commit()
+		#adds money to user
+		query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+uname+"\', \'"+uname+"_money1\', 'money1', '1000');")
+		cursor = cnx.cursor()
+		cursor.execute(query2)
+		cnx.commit()
+		#adds money to user
+		query3=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+uname+"\', \'"+uname+"_money2\', 'money2', '1000');")
+		cursor = cnx.cursor()
+		cursor.execute(query3)
+		cnx.commit()
+		cnx.close()
+
 		return json.dumps(dictionary, indent = 4)
 
 	dictionary ={ 
@@ -71,12 +184,11 @@ def add_user(uname,password,email,cnx,return_var_type):
 	return json.dumps(dictionary, indent = 4)
 
 #adds a post to the database and returens a post id by witch it can be foind
-#http://localhost:8000/doit?user=u1&action_type=add_post&user=&password=&text=&body=&photo=&catagoy=&catagoy_2=
 def add_post(uname,password,tital,text,body,photo,catagoy,catagoy_2,iframe,cnx,return_var_type):
 	letsgo = usercheck_conect(uname,password,cnx)
-	if letsgo=="False" or uname=="":
+	if letsgo!="True" and uname!="":
 		dictionary ={ 
-		  "id": "NA"
+		  "id": "NA "+uname+" "+password+" "+letsgo
 		} 
 		return json.dumps(dictionary, indent = 4)
 	myrandom = get_random_string(128)
@@ -91,7 +203,6 @@ def add_post(uname,password,tital,text,body,photo,catagoy,catagoy_2,iframe,cnx,r
 	return json.dumps(dictionary, indent = 4)
 
 #checks to see if a post is private
-#not called by user
 def check_priavate(key,private,cnx):
 	if private=="":
 		return "True"
@@ -99,15 +210,13 @@ def check_priavate(key,private,cnx):
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	counter=0
-	#aa= asdfadsf
 	for row in cursor:
 		counter=counter+1
 	if (counter==1):
 		return "True"
 	return "False"
 
-#given a post id it reterns a post
-#http://localhost:8000/doit?action_type=get_post&user=myuser&seach1=pass&seach2=mess&catagoy=email&catagoy_2=cat2&s_type=1&usekkey=ukey&key=&seach_type=seach
+#Given a post id it reterns a post
 def getpost(key,usekkey,cnx,return_var_type):
 	Q1=("SELECT `uname`,`text`,`body`,`tital`,`time`,`photo`,`iframe`,`catagoy`,`catagoy_2` FROM `a_final_posts` WHERE `postkey` LIKE \'"+key+"\';")
 	cursor = cnx.cursor()
@@ -165,20 +274,15 @@ def getpost(key,usekkey,cnx,return_var_type):
 		} 
 		return json.dumps(dictionary, indent = 4)
 
-
 #adds a ledgure to the post
-#http://localhost:8000/doit?user=u1&action_type=add_ledgure&password=top&email=myemail&hashword=hash&Ledgure=led
 def add_ledgure(uname,password,email,hashword,Ledgure,cnx,return_var_type):
 	letsgo = usercheck_conect(uname,password,cnx)
-
 	if (letsgo==False or uname==""):
 		dictionary ={ 
 		  "output": "user_taken",
-
 		} 
 		return json.dumps(dictionary, indent = 5)
 	try:
-
 		sql="INSERT INTO `a_final_Ledgur` (`Ledgurename`, `Ledgurepassword`, `email`, `time`) VALUES (\'"+uname+"_"+Ledgure+"\', \'"+hashword+"\', \'"+email+"\', CURRENT_TIMESTAMP);";
 		cursor = cnx.cursor()
 		cursor.execute(sql)
@@ -194,10 +298,9 @@ def add_ledgure(uname,password,email,hashword,Ledgure,cnx,return_var_type):
 		return json.dumps(dictionary, indent = 5)
 	return uname+"_"+Ledgure
 
-
 #adds a Post key given creads and a ledgure
-#http://localhost:8000/doit?action_type=add_key&ledgure=u1_led&password=hash&message=mess&email=email&key_message=keymessage&keyfroward=keyforward
 def add_key(ledgure,password,email,message,key_message,keyfroward,cnx,return_var_type):
+	path = "http://localhost:8000/doit?"
 	Q1=("SELECT `email` FROM `a_final_Ledgur` WHERE `Ledgurename` LIKE \'"+ledgure+"\' and `Ledgurepassword` LIKE \'"+password+"\';")
 	cursor = cnx.cursor()
 	cursor.execute(Q1)
@@ -205,6 +308,7 @@ def add_key(ledgure,password,email,message,key_message,keyfroward,cnx,return_var
 	for row in cursor:
 		counter=counter+1
 		email_to = row[0]
+	#case no leddudurename_password
 	if(counter==0):
 		dictionary ={ 
 		  "post_id": "NA",
@@ -221,15 +325,21 @@ def add_key(ledgure,password,email,message,key_message,keyfroward,cnx,return_var
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
+	#removes key
 	dictionary ={ 
 	  "post_id": post_id,
-	  "solution": solution
+	  "solution": solution,
+	  "email":email,
+	  "message":key_message,
+	  "ledgure_ownder_email":email_to,
+	  "land_url":path+"action_type=makepage&usertemplate_name=u1_mygameSEHTRJFCNLVXNRNSFVJXITPCKPKBPH&var1="+post_id+"?"+solution,
+	  "ledgure": ledgure,
+	  "path":path
 	}
+	#where add key funtion would go
 	return json.dumps(dictionary, indent = 5)
 
-
 #changes a post text fild OF post
-#http://localhost:8000/doit?action_type=change_post&user=u1&password=top&key=&text=this
 def change_post(user,password,key,text,cnx,return_var_type):
 	sql="SELECT `uname` FROM `a_final_posts` WHERE `postkey` LIKE \'"+key+"\';"
 	cursor = cnx.cursor()
@@ -241,7 +351,7 @@ def change_post(user,password,key,text,cnx,return_var_type):
 		uname=row[0]
 	if counter==0:
 		dictionary ={ 
-		  "output": "NO_Post_Found",
+		  "output": "NO_Post_Found"+" "+sql,
 		}
 		return json.dumps(dictionary, indent = 5)
 	letsgo = usercheck_conect(user,password,cnx)
@@ -264,7 +374,6 @@ def change_post(user,password,key,text,cnx,return_var_type):
 	return json.dumps(dictionary, indent = 5)
 
 #update a key by solving an old one and makeing a new one and returns a keyname 
-#http://localhost:8000/doit?action_type=change_key&user=myuser&name=&key=&newkey=this
 def change_key(key,name,newkey,cnx ,return_var_type):
 	sql = "SELECT `hash`,`ledgername`,`forward`,`key_message` FROM `a_final_Ledgur_keys` WHERE `entery_name` LIKE \'"+name+"\' AND `solution` LIKE 'key';"
 	cursor = cnx.cursor()
@@ -279,21 +388,23 @@ def change_key(key,name,newkey,cnx ,return_var_type):
 		key_message=row[2]
 	if counter==0:
 		dictionary ={ 
-		  "output": "NO_name",
+		  "output": "NO_name_or_key_taken",
 		}
 		return json.dumps(dictionary, indent = 5)
 
 	if hashlib.sha256(key.encode()).hexdigest()!=hashs:
-		return "NO_match"+key+" "+hashlib.sha256(key.encode()).hexdigest()+" "+hashs
+		dictionary ={ 
+		  "output": "NO_match"+key+" "+hashlib.sha256(key.encode()).hexdigest()+" "+hashs
+		}
+		return json.dumps(dictionary, indent = 5)
 	#change key case
-	sql ="UPDATE `a_final_Ledgur_keys` SET `solution` = 'keya' WHERE `entery_name` = \'"+key+"\'; "
+	sql ="UPDATE `a_final_Ledgur_keys` SET `solution` = \'"+key+"\' WHERE `entery_name` = \'"+name+"\'; "
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
 
 	myrandom = get_random_string(128)
 	post_id = hashlib.sha256(myrandom.encode()).hexdigest()
-
 	sql="INSERT INTO `a_final_Ledgur_keys` (`entery_name`, `ledgername`, `hash`, `solution`, `email`,`time`,`forward`,`key_message`) VALUES (\'"+post_id+"\', \'"+Lname+"\', \'"+newkey+"\', 'key', 'none', CURRENT_TIMESTAMP,\'"+forward+"\',\'"+key_message+"\');";
 	cursor = cnx.cursor()
 	cursor.execute(sql)
@@ -304,7 +415,6 @@ def change_key(key,name,newkey,cnx ,return_var_type):
 	return json.dumps(dictionary, indent = 5)
 
 #returns key inforamtiopn
-#http://localhost:8000/doit?action_type=check_key&name=
 def check_key(name,cnx,return_var_type):
 	sql = "SELECT `hash`,`ledgername`,`solution` FROM `a_final_Ledgur_keys` WHERE `entery_name` LIKE \'"+name+"\';"
 	cursor = cnx.cursor()
@@ -332,10 +442,8 @@ def check_key(name,cnx,return_var_type):
 	}
 	return json.dumps(dictionary, indent = 5)
 
-#removes a key and resonrs the infomation about it.
-#http://localhost:8000/doit?action_type=rm_ke&key=&name=
-#this removes keys and sends back the url 
-def rm_key(name,key,cnx,return_var_type):
+#removes a key and resonrs the infomation about it. can also froward infromation
+def rm_key(name,key,message,cnx,return_var_type):
 	sql = "SELECT `hash`,`ledgername`,`forward`,`key_message`,`email` FROM `a_final_Ledgur_keys` WHERE `entery_name` LIKE \'"+name+"\' AND `solution` LIKE 'key';"
 	cursor = cnx.cursor()
 	cursor.execute(sql)
@@ -368,29 +476,30 @@ def rm_key(name,key,cnx,return_var_type):
 		}
 		return json.dumps(dictionary, indent = 5)
 	#removing key and sending back_info_to_user
-	sql ="UPDATE `a_final_Ledgur_keys` SET `solution` = 'remvoe' WHERE `entery_name` = \'"+name+"\'; "
+	sql ="UPDATE `a_final_Ledgur_keys` SET `solution` = \'"+key+"\' WHERE `entery_name` = \'"+name+"\'; "
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
-
 	myrandom = get_random_string(128)
 	post_id = hashlib.sha256(myrandom.encode()).hexdigest()
 	sql="INSERT INTO `a_final_posts` (`uname`, `text`, `body`, `tital`, `time`, `photo`, `iframe`, `catagoy`, `catagoy_2`, `postkey`) VALUES ('addmin', '', '', '', CURRENT_TIMESTAMP, '', '', '', \'"+Lname+"\', \'"+post_id+"\');";
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
-
 	dictionary ={ 
 	  "key_message": str(key_message),
 	  "email":str(hashs),
-	  "forward":str(Lname),
+	  "forward":str(forward),
 	  "key_message":str(key_message),
-	  "post_id":str(post_id)
+	  "post_id":str(post_id),
+	  "ledgure":str(Lname),
+	  "mesage_to_send":str(message)
 	}
+	#where send logic is handeled
+
 	return json.dumps(dictionary, indent = 5)
 
-#makes a html template to be used by user
-#adds a template with post see posturl.html for an example as this uses post
+#adds a template with post see posturl.html for an example as this uses post makes a html template to be used by user
 def add_template(username,password,template_name,template,replace,cnx,return_var_type):
 	letsgo = usercheck_conect(username,password,cnx)
 	if replace=="":
@@ -421,30 +530,14 @@ def add_template(username,password,template_name,template,replace,cnx,return_var
 		}
 		return json.dumps(dictionary, indent = 4)
 
-#Sends back a tempalte returning a page after replaceing variables
-#makes a setion post with a given id not called by user
+#Sends back a tempalte returning a page after replaceing variables makes a setion post with a given id not called by user
 def make_setion(myid,cnx):
 	sql="INSERT INTO `a_final_posts` (`uname`, `text`, `body`, `tital`, `time`, `photo`, `iframe`, `catagoy`, `catagoy_2`, `postkey`) VALUES ('', '', '', '', CURRENT_TIMESTAMP, '', '', '', '', \'"+myid+"\');";
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
 
-#returns a html template
-#http://localhost:8000/doit?action_type=makepage&usertemplate_name=&var1=&rep=&setion=&setion2=
-#select a template name var1 setion and setion2 
-#the template name is chosen with add template its your username_templatename tehn maekpage is called this will be returened
-#if it exits it will also repalce all 
-#(!A???{rep_val}???A!) with "
-#(!B???{rep_val}???B!) with `
-#(!C???{rep_val}???C!) with `
-#(!D???{rep_val}???D!) with \
-#(!Q???{rep_val}???Q!) with script
-#(!0???{rep_val}???0!) with the variable passed in var1 in the get request
-#(!S???{rep_val}???S!) with setion1
-#(!Z???{rep_val}???Z!) with setion2
-#(!P???{rep_val}???P!) with path the the api 
-#(!T???{rep_val}???T!) with path the the template name
-
+#returns a template 
 def return_template(usertemplate_name,var1,setion,setion2,rep,cnx):
 	path="http://localhost:8000/doit"
 	sql = "SELECT `template` FROM `a_final_template7` WHERE `usertemplate_name` LIKE \'"+usertemplate_name+"\' "
@@ -474,11 +567,7 @@ def return_template(usertemplate_name,var1,setion,setion2,rep,cnx):
 	template = template.replace('(!T???'+rep+'???T!)',  usertemplate_name  )
 	return template
 
-#redirects protal
-
-#http://localhost:8000/?a=re&url=https://www.google.com/&rep=
-#http://localhost:8000/?a=re&url=id&rep=r to change conection
-
+#makes and redirects urls
 def redirect_req(var,types,cnx):
 	if types=="r":
 		sql="SELECT `url` FROM `redirect` WHERE `id` LIKE \'"+var+"\' "
@@ -507,18 +596,448 @@ def redirect_req(var,types,cnx):
 		  "id": post_id
 		} 
 
-		return HttpResponse(json.dumps(dictionary, indent = 4))
-
 #calls url page
 def under_call(url):
 	try:
 		x = requests.get(url)
 		return x.content
 	except:
-		pass
+		return "NONE"
 
-def print_user(req):
-	return HttpResponse( "home" )
+#finishes traid via traid id
+def funtion_make_traid(username, password ,traid_money_type,traid_money_amount,request_money_type,request_amount ,cnx):
+	try:
+		float(request_amount)
+		float(traid_money_amount)
+	except:
+		dictionary ={ 
+		  "response": "Invaild",
+		  "amnountleft":"NA"
+		} 
+		return json.dumps(dictionary, indent = 4)
+
+	if username=="NULL":
+		dictionary ={ 
+		  "response": "Wrong_Username",
+		  "amnountleft":"NA"
+		} 
+		return json.dumps(dictionary, indent = 4)
+	is_user=usercheck_conect(username,password,cnx)
+	if is_user=="False":
+		dictionary ={ 
+		  "response": "Wrong_Username",
+		  "amnountleft":"NA"
+		} 
+		return json.dumps(dictionary, indent = 4)
+	traidid=get_random_string(64)
+	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+username+"_"+traid_money_type+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		money=row[0]
+	amnountleft=money-traid_money_amount
+	if amnountleft>0:
+		pass
+	else:
+		#case no funds in user acount
+		dictionary ={ 
+		  "response": "No_Funds",
+		  "amnountleft":"NA"
+		} 
+		return json.dumps(dictionary, indent = 4)
+	#event where there are user funds in acount
+	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+username+"_"+traid_money_type+"';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+	Q1=("INSERT INTO `traidtable` (`traid_id`, `traid_mony_type`, `traid_request_type`, `traid_request_amount`, `traid_money_amount`, `user`, `buyer`) VALUES (\'"+traidid+"\', \'"+traid_money_type+"\', \'"+request_money_type+"\', \'"+str(request_amount)+"\', \'"+str(traid_money_amount)+"\', \'"+username+"\', 'NULL');")
+	cursor = cnx.cursor()
+	cursor.execute(Q1)
+	cnx.commit()
+	counter=0
+	cnx.close()
+	dictionary ={ 
+	  "response": traidid,
+	  "amnountleft":str(amnountleft)
+	} 
+	return json.dumps(dictionary, indent = 4)
+
+#compleate traid with traid id
+def compleat_traid_comand(user,password,traid_id,cnx):
+	if user=="NULL":
+		dictionary ={ 
+		  "response": "NO_USER",
+		}
+		return json.dumps(dictionary, indent = 4)
+	is_user=usercheck_conect(user,password,cnx)
+	if is_user=="False":
+		dictionary ={ 
+		  "response": "NO_USER",
+		}
+		return json.dumps(dictionary, indent = 4)
+	sql=("SELECT `traid_mony_type`,`traid_request_type`,`traid_request_amount`,`traid_money_amount`,`buyer`,`user` FROM `traidtable` WHERE `traid_id` LIKE \'"+traid_id+"\' AND `buyer` LIKE 'NULL';")
+	cursor = cnx.cursor()
+	cursor.execute(sql)
+	counter=0
+	for row in cursor:
+		counter=1
+		traid_mony_type=row[0]
+		traid_request_type=row[1]
+		traid_request_amount=row[2]
+		traid_money_amount=row[3]
+		buyer=row[4]
+		reciver=row[5]
+	#substack form payied user
+	if counter==0:
+		dictionary ={ 
+		  "response": "No_Traid",
+		}
+		return json.dumps(dictionary, indent = 4)
+	#verifies theres enough money user acount
+	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+user+"_"+traid_request_type+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		money=row[0]
+	amnountleft=money-traid_request_amount
+	if amnountleft>0:
+		pass
+	else:
+		dictionary ={ 
+		  "response": "No_Funds",
+		}
+		return json.dumps(dictionary, indent = 4)
+	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+user+"_"+traid_request_type+"';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+
+	#put money gained form train to taker of traid
+	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+reciver+"_"+traid_request_type+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		money=row[0]
+	amnountleft=money+traid_request_amount
+	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+reciver+"_"+traid_request_type+"';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+
+	#add to user acount who made traid
+	checkandadd_money_type(user,traid_mony_type,cnx)
+	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+user+"_"+traid_mony_type+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		money=row[0]
+	amnountleft=money+traid_money_amount
+
+	#add money to user acount
+	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+user+"_"+traid_mony_type+"';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+	#update buyer
+	Q0=("UPDATE `traidtable` SET `buyer` = \'"+user+"\' WHERE `traidtable`.`traid_id` = \'"+traid_id+"\';")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	cnx.commit()
+	cnx.close()
+	#print(traid_mony_type,traid_request_type,traid_request_amount,traid_money_amount,buyer,reciver)
+	dictionary ={ 
+	  "response": traid_id,
+	}
+	return json.dumps(dictionary, indent = 4)
+	return traid_id;
+
+#add barter curancy to acount
+def get_key2(path,ledgure_name,keyname,password):
+	#get barter key
+	myurl = path+"?action_type=check_key&name="+keyname
+	x = requests.get(myurl)
+	getarray = json.loads(x.content.decode('utf-8'))
+	if getarray["hash"]!="NA":
+		print("passed_leddgure")
+	else:
+		return [False,"Failed leddgure",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	if getarray["ledgure"]==ledgure_name:
+		print("passed_leddgure")
+	else:
+		return [False,"Failed leddgure",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	passwordCandidate = password
+	val = hashlib.sha256(passwordCandidate.encode()).hexdigest()
+	if val==getarray["hash"]:
+		print("passed_key")
+	else:
+		return [False,"Failed_key",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	random_string=""
+	#generate and sores new crypto
+	for _ in range(100):
+	    random_integer = random.randint(65, 80)
+	    random_string += (chr(random_integer))
+	passwordCandidate = random_string
+	newkey = hashlib.sha256(passwordCandidate.encode()).hexdigest()
+	keyhash = hashlib.sha256(newkey.encode()).hexdigest()
+	newname = ""
+	#"http://localhost:8000/doit?name=8cb659e7c6a3741f06c05a470c5d1be19fc06e0e92428683cace4d466dab93fa&action_type=change_key&key=f23fe76e075c152c58b7446f963282c6f719ead3c87207d919f7a1a5b139959b&newkey=new_key"
+	x = requests.get(path+"?name="+keyname+"&key="+password+"&newkey="+keyhash+"&action_type=change_key")
+	# { "output": "1d02bd8d2550f41376ef49188516c870119dca49e9d8a5ff9649f6211eb2bfb7" }
+	myval = json.loads( x.content.decode('utf-8').strip() )
+
+	if len(myval["output"])<=40:
+		return [False,"NO_key", "",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	stingout = "key="+newkey+" name="+myval["output"]+" entery_name="+ledgure_name+" path="+path
+	#print(stingout)
+	return [True,stingout,path+ledgure_name]
+
+#add crypto to user acount
+def add_crypto(uname,password,path,key,name,lname,cnx):
+	if (usercheck_conect(uname,password,cnx)==False):
+		return "No_user"
+	is_user=usercheck_conect(uname,password,cnx)
+	if is_user=="False" or uname=="NULL":
+		dictionary ={ 
+		  "response": "NO_user",
+		}
+		return json.dumps(dictionary, indent = 4)	
+	val = [False,path+"check_key.php?name="+key,path+"check_key.php?name="+key,""]
+	val = get_key(path,lname,name,key)
+	#val = get_key(path,lname,name,key)
+	if (val[0]==True):
+		random_string=""
+		for _ in range(100):
+		    random_integer = random.randint(65, 80)
+		    random_string += (chr(random_integer))
+		passwordCandidate = random_string
+		ADD="INSERT INTO `crypto3` (`id_section`, `item_name`, `url`, `added`, `cached`, `used`) VALUES (\'"+random_string+"\', \'"+val[2]+"\', \'"+val[1]+"\', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'NOT');"
+		cursor = cnx.cursor()
+		cursor.execute(ADD)
+		cnx.commit()
+		Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\' ")
+		cursor = cnx.cursor()
+		cursor.execute(Q0)
+		for row in cursor:
+			number_of_users=row[0]
+		if (number_of_users==0):
+			query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+uname+"\', \'"+uname+"_"+val[2]+"\', \'"+val[2]+"\', '1');")
+			cursor = cnx.cursor()
+			cursor.execute(query2)
+			cnx.commit()
+			dictionary ={ 
+			  "response": "1",
+			}
+			return json.dumps(dictionary, indent = 4)
+		else:
+			Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\'")
+			cursor = cnx.cursor()
+			cursor.execute(Q0)
+			for row in cursor:
+				money=row[0]
+			amnountleft=money+1
+			U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+uname+"_"+val[2]+"';")
+			cursor = cnx.cursor()
+			cursor.execute(U1)
+			cnx.commit()
+			dictionary ={ 
+			  "response": str(amnountleft),
+			}
+			return json.dumps(dictionary, indent = 4)	
+	else:
+		dictionary ={ 
+		  "response": "NO_key"+val[1]+" "+val[2],
+		}
+		return json.dumps(dictionary, indent = 4)
+
+#adds money type to user acount if its not there and makes it zero 
+def checkandadd_money_type(user,money,cnx):
+	#adds a money collum if there is no money avaible
+	Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+user+"_"+money+"\' ")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		number_of_users=row[0]
+	if (number_of_users==0):
+		query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+user+"\', \'"+user+"_"+money+"\', \'"+money+"\', '0');")
+		cursor = cnx.cursor()
+		cursor.execute(query2)
+		cnx.commit()
+	return
+
+#add crypto to user acount
+def add_crypto(uname,password,path,key,name,lname,cnx):
+	if (usercheck_conect(uname,password,cnx)==False):
+		return "No_user"
+	is_user=usercheck_conect(uname,password,cnx)
+	if is_user=="False" or uname=="NULL":
+		dictionary ={ 
+		  "response": "NO_user",
+		}
+		return json.dumps(dictionary, indent = 4)	
+	val = [False,path+"check_key.php?name="+key,path+"check_key.php?name="+key,""]
+	try:
+		val = get_key2(path,lname,name,key)
+	except:
+		pass
+	#val = get_key(path,lname,name,key)
+	if (val[0]==True):
+		random_string=""
+		for _ in range(100):
+		    random_integer = random.randint(65, 80)
+		    random_string += (chr(random_integer))
+		passwordCandidate = random_string
+		ADD="INSERT INTO `crypto3` (`id_section`, `item_name`, `url`, `added`, `cached`, `used`) VALUES (\'"+random_string+"\', \'"+val[2]+"\', \'"+val[1]+"\', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'NOT');"
+		cursor = cnx.cursor()
+		cursor.execute(ADD)
+		cnx.commit()
+		Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\' ")
+		cursor = cnx.cursor()
+		cursor.execute(Q0)
+		for row in cursor:
+			number_of_users=row[0]
+		if (number_of_users==0):
+			query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+uname+"\', \'"+uname+"_"+val[2]+"\', \'"+val[2]+"\', '1');")
+			cursor = cnx.cursor()
+			cursor.execute(query2)
+			cnx.commit()
+			dictionary ={ 
+			  "response": "1",
+			}
+			return json.dumps(dictionary, indent = 4)
+		else:
+			Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+val[2]+"\'")
+			cursor = cnx.cursor()
+			cursor.execute(Q0)
+			for row in cursor:
+				money=row[0]
+			amnountleft=money+1
+			U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+uname+"_"+val[2]+"';")
+			cursor = cnx.cursor()
+			cursor.execute(U1)
+			cnx.commit()
+			dictionary ={ 
+			  "response": str(amnountleft),
+			}
+			return json.dumps(dictionary, indent = 4)	
+	else:
+		dictionary ={ 
+		  "response": "NO_key",
+		}
+		return json.dumps(dictionary, indent = 4)
+
+#adds money type to user acount if its not there and makes it zero 
+def checkandadd_money_type(user,money,cnx):
+	#adds a money collum if there is no money avaible
+	Q0=("SELECT Count(*) FROM `money` WHERE `user_money` LIKE \'"+user+"_"+money+"\' ")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		number_of_users=row[0]
+	if (number_of_users==0):
+		query2=("INSERT INTO `money` (`user`, `user_money`, `mony_type`, `amount_of_money`) VALUES (\'"+user+"\', \'"+user+"_"+money+"\', \'"+money+"\', '0');")
+		cursor = cnx.cursor()
+		cursor.execute(query2)
+		cnx.commit()
+	return
+
+#returns barter curnacy to user 
+def get_key_back(uname,password,money_type,cnx):
+	if (usercheck_conect(uname,password,cnx)==False):
+		return "No_user"
+	checkandadd_money_type(uname,money_type,cnx)
+	Q0=("SELECT `amount_of_money` FROM `money` WHERE `user_money` LIKE \'"+uname+"_"+money_type+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	for row in cursor:
+		money=row[0]
+	#subtrask curancy
+	amnountleft = money-1
+	if amnountleft>=0:
+		pass
+	else:
+		dictionary ={ 
+		  "response": "no_funds for " + uname+"_"+money_type,
+		}
+		return json.dumps(dictionary, indent = 4)
+	U1=("UPDATE `money` SET `amount_of_money` = \'"+str(amnountleft)+"\' WHERE `money`.`user_money` = '"+uname+"_"+money_type+"';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+
+	U1=("SELECT `id_section`,`url` FROM `crypto3` WHERE `item_name` LIKE \'"+money_type+"\' and  `used` LIKE 'NOT';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+	for row in cursor:
+		stingid=row[0]
+		url=row[1]
+	U1=("UPDATE `crypto3` SET `used` = 'used' WHERE `id_section` = \'"+stingid+"\';")
+	cursor = cnx.cursor()
+	cursor.execute(U1)
+	cnx.commit()
+	dictionary ={ 
+	  "response": str(url),
+	}
+	return json.dumps(dictionary, indent = 4)
+
+#get info about traid
+def get_traid(traid_id,cnx):
+	Q0="SELECT `traid_id`,`traid_mony_type`,`traid_request_type`,`traid_mony_type`,`traid_request_amount`,`traid_money_amount`,`user`,`buyer` FROM `traidtable` WHERE `traid_id` LIKE \'"+traid_id+"\'; "
+	counter=0
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	cnx.commit()
+	for row in cursor:
+		counter=1
+		traid_id=row[0]
+		traid_mony_type=row[1]
+		traid_request_type=row[2]
+		traid_request_amount=row[3]
+		traid_money_amount=row[4]
+		traid_request_amount=row[5]
+		user=row[6]
+		buyer =row[7]
+	if counter==1:
+		dictionary ={ 
+		  "traid_id": traid_id,
+		  "traid_mony_type": traid_mony_type,
+		  "traid_request_type":traid_request_type,
+		  "traid_request_amount":traid_request_amount,
+		  "traid_money_amount":traid_money_amount,
+		  "traid_request_amount":traid_request_amount,
+		  "user":user,
+		  "buyer":buyer
+		}
+		return json.dumps(dictionary, indent = 4)
+		#return str(traid_id)+" "+str(traid_mony_type)+" "+str(traid_request_type)+" "+str(traid_request_amount)+" "+str(traid_money_amount)+" "+str(traid_request_amount)+" "+str(user)+" "+str(buyer)
+	dictionary ={ 
+	  "traid_id": "NO_traid_id",
+	  "traid_mony_type": "NA",
+	  "traid_request_type":"NA",
+	  "traid_request_amount":"NA",
+	  "traid_money_amount":"NA",
+	  "traid_request_amount":"NA",
+	  "user":"NA",
+	  "buyer":"NA"
+	}
+	return json.dumps(dictionary, indent = 4)
+
+#prints infro about user
+def user_acount(user,cnx):
+	if user=="NULL":
+		return "False_NO_NULL_user"
+	Q0=("SELECT `user_money`,`amount_of_money` FROM `money` WHERE `user` LIKE \'"+user+"\'")
+	cursor = cnx.cursor()
+	cursor.execute(Q0)
+	cnx.commit()
+	outsting=[]
+	for row in cursor:
+		outsting=outsting+[ [row[0],str(row[1])] ]
+	cnx.commit()
+	cnx.close()
+	dictionary ={ 
+	  "out": outsting,
+	}
+	return json.dumps(dictionary, indent = 4)
 
 #setup up api returens and  calls other functions
 def doit(req):
@@ -630,55 +1149,51 @@ def doit(req):
         message=req.GET["message"]
     except:
         pass
-
     hashword=""
     try:
         hashword=req.GET["hashword"]
     except:
         pass
-
     Ledgure=""
     try:
         Ledgure=req.GET["Ledgure"]
     except:
         pass
-
     ledgure=""
     try:
         ledgure=req.GET["ledgure"]
     except:
         pass
-
     name=""
     try:
         name=req.GET["name"]
     except:
         pass
-
     newkey=""
     try:
         newkey=req.GET["newkey"]
     except:
         pass
-
     seach_type=""
     try:
         seach_type=req.GET["seach_type"]
     except:
         pass
-
     use_key=""
     try:
         use_key=req.GET["use_key"]
     except:
         pass
+    try:
+        use_key=req.GET["usekkey"]
 
+    except:
+        pass
     key_message=""
     try:
         key_message=req.GET["keyfroward"]
     except:
         pass
-
     keyfroward=""
     try:
         keyfroward=req.GET["keyfroward"]
@@ -689,7 +1204,6 @@ def doit(req):
         return_var_type=req.GET["return_var_type"]
     except:
 	    pass
-
     setion=""
     try:
         setion=req.GET["setion"]
@@ -700,7 +1214,6 @@ def doit(req):
         setion2=req.GET["setion2"]
     except:
         pass
-
     var1=""
     try:
         var1=req.GET["var1"]
@@ -711,7 +1224,6 @@ def doit(req):
         usertemplate_name=req.GET["usertemplate_name"]
     except:
         pass
-
     rep=""
     try:
         rep=req.GET["rep"]
@@ -722,40 +1234,87 @@ def doit(req):
         url=req.GET["url"]
     except:
         pass
+    L_name=""
+    try:
+        L_name=req.GET["L_name"]
+    except:
+        pass
+    request_type=""
+    try:
+        request_type=req.GET["request_type"]
+    except:
+        pass
+    send_type=""
+    try:
+        send_type=req.GET["send_type"]
+    except:
+        pass
+    send_amount=""
 
+    try:
+        send_amount=float(req.GET["send_amount"])
+    except:
+        pass
+
+    crypto_path=""
+    try:
+        crypto_path=req.GET["crypto_path"]
+    except:
+        pass
+    traid_id=""
+    try:
+        traid_id=req.GET["traid_id"]
+    except:
+        pass
+    request_amound=""
+    try:
+        request_amound=float(req.GET["request_amound"])
+    except:
+        pass
+    crypto_name=""
+    try:
+        crypto_name=req.GET["crypto_name"]
+    except:
+        pass
+    crypto_key=""
+    try:
+        crypto_key=req.GET["crypto_key"]
+    except:
+    	pass
     if action_type=="url":
         return HttpResponse( under_call(url) )
     if action_type=="adduser":
         out=add_user(user,password,email,try_to_connect(),return_var_type)
         return HttpResponse( out )
-
     #Getting values
     if action_type=="add_post":
-    	out = " this "
     	return  HttpResponse(add_post(user,password,tital,text,body,photo,catagoy,catagoy_2,iframe, try_to_connect(),return_var_type ) )
-
     if action_type=="get_post":
     	return  HttpResponse( getpost(key,use_key,try_to_connect(),return_var_type ) )
-
     if action_type=="add_ledgure":
     	return HttpResponse( add_ledgure(user,password,email,hashword,Ledgure,try_to_connect() ,return_var_type ) )
-
     if action_type=="add_key":
     	return HttpResponse(  add_key(ledgure,password,email,message,key_message,keyfroward, try_to_connect() ,return_var_type ) )
-
     if action_type=="change_post":
     	return HttpResponse( change_post(user,password,key,text,try_to_connect() ,return_var_type ) )
-
     if action_type =="change_key":
     	return HttpResponse( change_key(key,name,newkey,try_to_connect(),return_var_type ) )
-
     if action_type =="check_key":
     	return HttpResponse( check_key(name,try_to_connect(),return_var_type ) )
-
     if action_type =="rm_key":
-    	#a =asdfasf
-    	return HttpResponse( rm_key(name,key,try_to_connect(),return_var_type ) )
-
+    	return HttpResponse( rm_key(name,key,L_name,try_to_connect(),return_var_type ) )
+    if action_type=="fintraid":
+        return HttpResponse( compleat_traid_comand(user,password,traid_id,try_to_connect()) )
+    if action_type=="Uprint":
+    	return HttpResponse(  user_acount(user,try_to_connect()) )
+    if action_type=="traid":
+    	return HttpResponse( get_traid(traid_id,try_to_connect()) )
+    if action_type=="add_C":
+        return HttpResponse(add_crypto(user,password,crypto_path,crypto_key,crypto_name,L_name,try_to_connect()) )
+    if action_type=="get_C":
+        return HttpResponse(get_key_back(user,password,crypto_path+L_name,try_to_connect()))
+    if action_type=="maketraid":
+        return HttpResponse( funtion_make_traid(user,password,send_type,send_amount,request_type,request_amound,try_to_connect())  )
     a=""
     try:
         a=req.GET["a"]
@@ -763,9 +1322,7 @@ def doit(req):
         pass
     if a =="re":
     	return redirect_req(url,rep,try_to_connect())
-
     #templates
-
     types=""
     user=""
     password=""
@@ -781,8 +1338,6 @@ def doit(req):
         replace=req.POST["replace"]
     except:
         pass
-
-
     if types!="":
         return HttpResponse(add_template(user,password,temmplate_name,template,replace,try_to_connect(),return_var_type ))
 
@@ -795,8 +1350,6 @@ def doit(req):
                     	make_setion(setion, try_to_connect() )
                     except:
                     	pass
-
-
             if setion2=="":
                     randome2 = get_random_string(128)
                     setion2 = hashlib.sha256(randome2.encode()).hexdigest()
@@ -809,7 +1362,49 @@ def doit(req):
             return response
         else:
             return HttpResponse(return_template(usertemplate_name,var1,setion,setion2,rep,try_to_connect() ) )
-    a = adfdasfadsfaf
     return HttpResponse( "api_fail" )
 
+
+
+def get_key(path,ledgure_name,keyname,password):
+	#get barter key
+	x = requests.get(path+"check_key.php?name="+keyname)
+
+	getarray = str(x.content)
+
+	out = getarray.split(" ")
+	if len(out)==9:
+	#cehcks barter key
+		print("passed_leddgure")
+	else:
+		return [False,"Failed leddgure",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+
+	if ledgure_name==out[1]:
+		print("passed_leddgure")
+	else:
+		return [False,"Failed leddgure",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	#
+	passwordCandidate = password
+	val = hashlib.sha256(passwordCandidate.encode()).hexdigest()
+	if val==out[3]:
+		print("passed_key")
+	else:
+		return [False,"Failed_key",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	random_string=""
+	#generate and sores new crypto
+	for _ in range(100):
+	    random_integer = random.randint(65, 80)
+	    random_string += (chr(random_integer))
+	passwordCandidate = random_string
+	newkey = hashlib.sha256(passwordCandidate.encode()).hexdigest()
+	keyhash = hashlib.sha256(newkey.encode()).hexdigest()
+	newname = ""
+	x = requests.get(path+"change_key.php?name="+keyname+"&key="+password+"&Nkey="+keyhash)
+	myval = x.content.decode('utf-8').strip()
+
+	if myval=="false":
+		return [False,"NO_key", "",path+" "+ledgure_name+" "+keyname+" "+password+" "+path+"check_key.php?name="+keyname]
+	stingout = path+"output2.php?key="+newkey+"&name="+myval+"&entery_name="+ledgure_name 
+	#print(stingout)
+	return [True,stingout,path+ledgure_name]
 

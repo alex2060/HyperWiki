@@ -1,23 +1,12 @@
 
 
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Add</title>
+  <title>Add User</title>
   <!-- bootstrap link start -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
     integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
@@ -31,10 +20,7 @@
   <style>
   .themainbutton{
     min-width: 220px;
-
   }
-  
-
   </style>
 </head>
 
@@ -43,12 +29,10 @@
 <body style="background-color: #24222a;">
 
   <div class="container ">
-
-
-
     <div class=" d-flex justify-content-center">
-      <form action="doit" class="mt-3">
-          <label for="uname" class="text-white">check_user </label>
+      <div>
+
+          <div id = "stuff"> <label for="uname" class="text-white">Add a User </label></div>
         </br>
         <div class="form-group">
           <label for="uname" class="text-white">User Name</label>
@@ -56,49 +40,63 @@
         </div>
 
         <div class="form-group">
-          <label for="uname" class="text-white">User Name</label>
-          <input type="text" class="form-control" id="action_type" name="action_type" placeholder="action_type" value="Uprint">
+          <label for="uname" class="text-white">Password</label>
+          <input type="text" class="form-control" id="password" name="password" placeholder="Passwords" value="">
+        </div>
+
+        <div class="form-group">
+          <label for="uname" class="text-white">Email</label>
+          <input type="text" class="form-control" id="email" name="email" placeholder="Email" value="">
         </div>
 
 
+        <button class="btn btn-primary" onclick="add_user()">Add User</button>
+
+      </div>
 
 
-
-        <button type="submit" class="btn btn-primary" value="Submit">Login</button>
-
-      </form>
-
-
-
-
-
-    </div>
-    <label for="uname" class="text-white">
-Upint
-</br>
-reset_convertion
-</br>
-print_convertion
-</label>
-            </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='traider';">make traider</button>
-    </br>
-
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='add_traid';">Add User</button>
-    </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='traider';">Make_triad </button>
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='compleat_traid';">compleat_traid</button>
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='print_user';">print user/reset convertion/ make convertion      </button>
-</br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='add_C';">crypto </button>
+      </div>
 
   </div>
+</body>
+</html>
+
+<script type="text/javascript">
+
+
+function add_user(){
+
+send_Url="(!P???!???P!)?&action_type=url&url="+escape("https://0fe3-24-8-116-162.ngrok.io/doit?")
+
+post_responce(send_Url,send_alert,"varible");
+
+}
+
+function send_alert(A,B){
+  //myvalue=JSON.parse(A);
+  //console.log(myvalue);
+  document.getElementById("stuff").innerHTML= "<label for=\"uname\" class=\"text-white\">"+A+"</label></div>";
+}
+
+function post_responce(path,func,varible){
+
+  console.log(path);
+  fetch(path).then(
+      ( response) => {
+          return response.text();
+      })
+      .then((html) => {
+          func(  html.trim()  , varible )
+      });
+}
 
 
 
+
+
+
+
+</script>
 
 
 

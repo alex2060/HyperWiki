@@ -1,23 +1,12 @@
 
 
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Add</title>
+  <title>Make Traid</title>
   <!-- bootstrap link start -->
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
     integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
@@ -31,10 +20,7 @@
   <style>
   .themainbutton{
     min-width: 220px;
-
   }
-  
-
   </style>
 </head>
 
@@ -43,56 +29,68 @@
 <body style="background-color: #24222a;">
 
   <div class="container ">
-
-
-
     <div class=" d-flex justify-content-center">
-      <form action="doit" class="mt-3">
-          <label for="uname" class="text-white">print convertion </label>
+      <div>
+
+          <div id = "stuff"> <label for="uname" class="text-white">Make Traid</label></div>
         </br>
 
+
         <div class="form-group">
-          <label for="uname" class="text-white">User Name</label>
-          <input type="text" class="form-control" id="action_type" name="action_type" placeholder="action_type" value="reset_convertion">
+          <label for="uname" class="text-white">Check key</label>
+          <input type="text" class="form-control" id="traid_id" name="traid_id" placeholder="Passwords" value="">
         </div>
 
 
 
 
+        <button class="btn btn-primary" onclick="add_user()">Make Traid</button>
 
-        <button type="submit" class="btn btn-primary" value="Submit">Login</button>
-
-      </form>
-
+      </div>
 
 
+      </div>
 
-
-    
-
-
-    </div>
-
-        </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='traider';">make traider</button>
-    </br>
-
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='add_traid';">Add User</button>
-    </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='traider';">Make_triad </button>
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='compleat_traid';">compleat_traid</button>
-      </br>
-        <button class="btn btn-info themainbutton" onclick="window.location.href='print_user';">print user/reset convertion/ make convertion      </button>  
-        </br>
-
-                <button class="btn btn-info themainbutton" onclick="window.location.href='add_C';">crypto </button>
- 
   </div>
+</body>
+</html>
+
+<script type="text/javascript">
+
+
+function add_user(){
 
 
 
+//http://localhost:8001/doit?user=myuser3&password=pass&traid_id=bvmrphmjgflutxuqidazavnulqiwkoopgctzotsqvvnmehvanvjeywfmwzkxmrun&action_type=fintraid
+myval="action_type=check_key&name="+document.getElementById("traid_id").value;
+
+
+send_Url="(!P???!???P!)?"+myval
+alert(send_Url);
+post_responce(send_Url,send_alert,"varible");
+
+}
+
+function send_alert(A,B){
+  myvalue=JSON.parse(A);
+  console.log(myvalue);
+
+  document.getElementById("stuff").innerHTML= "<label for=\"uname\" class=\"text-white\">"+A+"</label></div>";
+}
+
+function post_responce(path,func,varible){
+
+  console.log(path);
+  fetch(path).then(
+      ( response) => {
+          return response.text();
+      })
+      .then((html) => {
+          func(  html.trim()  , varible )
+      });
+}
+</script>
 
 
 
