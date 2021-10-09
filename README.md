@@ -1,4 +1,4 @@
-# Dockerized App: Django + MySQL
+# Dockerized App: Hyper wiki
 #thanks a thanks to https://github.com/Alejandroacho/DockerizedAppTemplate for the docker template
 
 All we be in one Docker container that will be already setted up to just start With ths hyper wiki
