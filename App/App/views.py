@@ -16,11 +16,11 @@ import braintree
 from django.core.mail import send_mail
 from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
-
 def try_to_connect():
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
-
+def path_getter():
+	return "http://localhost:8000"
 #home page
 def print_user(req):
     f = open("home.html", "r")
@@ -133,6 +133,7 @@ def get_random_string(length):
 def usercheck_conect(uname,password,cnx):
 	if uname=="NULL":
 		return "False"
+
 	Q1=("SELECT * FROM `a_final_users_table` WHERE `uname` LIKE \'"+uname+"\' AND `hashword` LIKE \'"+password+"\'")
 	cursor = cnx.cursor()
 	cursor.execute(Q1)
@@ -145,6 +146,9 @@ def usercheck_conect(uname,password,cnx):
 
 #Adds user to database
 def add_user(uname,password,email,cnx,return_var_type):
+	newname=uname.replace("_","")
+	if newname!=uname:
+		return "No _"
 	sql1 = "SELECT * FROM `a_final_users_table` WHERE `uname` LIKE \'"+uname+"\'";
 	cursor = cnx.cursor()
 	cursor.execute(sql1)
@@ -278,9 +282,9 @@ def getpost(key,usekkey,cnx,return_var_type):
 #adds a ledgure to the post
 def add_ledgure(uname,password,email,hashword,Ledgure,cnx,return_var_type):
 	letsgo = usercheck_conect(uname,password,cnx)
-	if (letsgo==False or uname==""):
+	if (letsgo=="False"):
 		dictionary ={ 
-		  "output": "user_taken",
+		  "output": "Wrong_User_Name",
 		} 
 		return json.dumps(dictionary, indent = 5)
 	try:
@@ -301,7 +305,7 @@ def add_ledgure(uname,password,email,hashword,Ledgure,cnx,return_var_type):
 
 #adds a Post key given creads and a ledgure
 def add_key(ledgure,password,email,message,key_message,keyfroward,cnx,return_var_type):
-	path = "http://localhost:8000/doit?"
+	path = path_getter()+"/doit?"
 	Q1=("SELECT `email` FROM `a_final_Ledgur` WHERE `Ledgurename` LIKE \'"+ledgure+"\' and `Ledgurepassword` LIKE \'"+password+"\';")
 	cursor = cnx.cursor()
 	cursor.execute(Q1)
@@ -532,15 +536,15 @@ def add_template(username,password,template_name,template,replace,cnx,return_var
 		return json.dumps(dictionary, indent = 4)
 
 #Sends back a tempalte returning a page after replaceing variables makes a setion post with a given id not called by user
-def make_setion(myid,cnx):
-	sql="INSERT INTO `a_final_posts` (`uname`, `text`, `body`, `tital`, `time`, `photo`, `iframe`, `catagoy`, `catagoy_2`, `postkey`) VALUES ('', '', '', '', CURRENT_TIMESTAMP, '', '', '', '', \'"+myid+"\');";
+def make_setion(myid,cnx,make):
+	sql="INSERT INTO `a_final_posts` (`uname`, `text`, `body`, `tital`, `time`, `photo`, `iframe`, `catagoy`, `catagoy_2`, `postkey`) VALUES ('', '', '', '', CURRENT_TIMESTAMP, '', '', \'"+make+"\', '', \'"+myid+"\');";
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	cnx.commit()
 
 #returns a template 
 def return_template(usertemplate_name,var1,setion,setion2,rep,cnx):
-	path="http://localhost:8000/doit"
+	path=path_getter()+"/doit"
 	sql = "SELECT `template` FROM `a_final_template7` WHERE `usertemplate_name` LIKE \'"+usertemplate_name+"\' "
 	cursor = cnx.cursor()
 	cursor.execute(sql)
@@ -562,6 +566,8 @@ def return_template(usertemplate_name,var1,setion,setion2,rep,cnx):
 	template = template.replace('(!D???'+rep+'???D!)',  '\\' )
 	template = template.replace('(!Q???'+rep+'???Q!)',  'script' )
 	template = template.replace('(!0???'+rep+'???0!)',  var1     )
+	template = template.replace('(!W???'+rep+'???W!)',  '&'      )
+	template = template.replace('(!L???'+rep+'???L!)',  '+')
 	template = template.replace('(!S???'+rep+'???S!)',  setion   )
 	template = template.replace('(!Z???'+rep+'???Z!)',  setion2  )
 	template = template.replace('(!P???'+rep+'???P!)',  path  )
@@ -796,7 +802,6 @@ def get_key2(path,ledgure_name,keyname,password):
 	#print(stingout)
 	return [True,stingout,path+ledgure_name]
 
-
 #add crypto to user acount
 def add_crypto(uname,password,path,key,name,lname,cnx):
 	if (usercheck_conect(uname,password,cnx)==False):
@@ -974,213 +979,222 @@ def user_acount(user,cnx):
 	return json.dumps(dictionary, indent = 4)
 
 #setup up api returens and  calls other functions
+def sriper(word):
+	word=word.replace("\"" ,"(???1???)")
+	word=word.replace("'"  ,"(???2???)")
+	word=word.replace("`"  ,"(???3???)")
+	word=word.replace("\\" ,"(???4???)")
+	return word
+
+
+
 def doit(req):
     #Geting input vars
     action_type=""
     try:
-        action_type=req.GET["action_type"]
+        action_type=sriper(req.GET["action_type"])
     except:
         action_type=""
     user=""
     try:
-        user=req.GET["user"]
+        user=sriper(req.GET["user"])
     except:
         user=""
     email=""
     try:
-        email=req.GET["email"]
+        email=sriper(req.GET["email"])
     except:
         email=""
     phone=""
     try:
-        phone=req.GET["phone"]
+        phone=sriper(req.GET["phone"])
     except:
         phone=""
     password=""
     try:
-        password=req.GET["password"]
+        password=sriper(req.GET["password"])
     except:
         pass
     crypto_name=""
     try:
-        crypto_name=req.GET["crypto_name"]
+        crypto_name=sriper(req.GET["crypto_name"])
     except:
         pass
     crypto_key=""
     try:
-        crypto_key=req.GET["crypto_key"]
+        crypto_key=sriper(req.GET["crypto_key"])
     except:
         pass
     crypto_path=""
     try:
-        crypto_path=req.GET["crypto_path"]
+        crypto_path=sriper(req.GET["crypto_path"])
     except:
         pass
     L_name=""
     try:
-        L_name=req.GET["L_name"]
+        L_name=sriper(req.GET["L_name"])
     except:
         pass
     request_type=""
     try:
-        request_type=req.GET["request_type"]
+        request_type=sriper(req.GET["request_type"])
     except:
         pass
     tital=""
     try:
-        tital=req.GET["tital"]
+        tital=sriper(req.GET["tital"])
     except:
         pass
 
     text=""
     try:
-        text=req.GET["text"]
+        text=sriper(req.GET["text"])
     except:
         pass
 
     body=""
     try:
-        body=req.GET["body"]
+        body=sriper(req.GET["body"])
     except:
         pass
     photo=""
     try:
-        photo=req.GET["photo"]
+        photo=sriper(req.GET["photo"])
     except:
         pass
     catagoy=""
     try:
-        catagoy=req.GET["catagoy"]
+        catagoy=sriper(req.GET["catagoy"])
     except:
         pass
     catagoy_2=""
     try:
-        catagoy_2=req.GET["catagoy_2"]
+        catagoy_2=rsriper(eq.GET["catagoy_2"])
     except:
         pass
     iframe=""
     try:
-        iframe=req.GET["iframe"]
+        iframe=sriper(req.GET["iframe"])
     except:
         pass
     key=""
     try:
-        key=req.GET["key"]
+        key=sriper(req.GET["key"])
     except:
         pass
     seach1=""
     try:
-        seach1=req.GET["seach1"]
+        seach1=sriper(req.GET["seach1"])
     except:
         pass
     seach2=""
     try:
-        seach2=req.GET["seach2"]
+        seach2=sriper(req.GET["seach2"])
     except:
         pass
     message=""
     try:
-        message=req.GET["message"]
+        message=sriper(req.GET["message"])
     except:
         pass
     hashword=""
     try:
-        hashword=req.GET["hashword"]
+        hashword=sriper(req.GET["hashword"])
     except:
         pass
     Ledgure=""
     try:
-        Ledgure=req.GET["Ledgure"]
+        Ledgure=sriper(req.GET["Ledgure"])
     except:
         pass
     ledgure=""
     try:
-        ledgure=req.GET["ledgure"]
+        ledgure=sriper(req.GET["ledgure"])
     except:
         pass
     name=""
     try:
-        name=req.GET["name"]
+        name=sriper(req.GET["name"])
     except:
         pass
     newkey=""
     try:
-        newkey=req.GET["newkey"]
+        newkey=sriper(req.GET["newkey"])
     except:
         pass
     seach_type=""
     try:
-        seach_type=req.GET["seach_type"]
+        seach_type=sriper(req.GET["seach_type"])
     except:
         pass
     use_key=""
     try:
-        use_key=req.GET["use_key"]
+        use_key=sriper(req.GET["use_key"])
     except:
         pass
     try:
-        use_key=req.GET["usekkey"]
+        use_key=sriper(req.GET["usekkey"])
 
     except:
         pass
     key_message=""
     try:
-        key_message=req.GET["keyfroward"]
+        key_message=sriper(req.GET["keyfroward"])
     except:
         pass
     keyfroward=""
     try:
-        keyfroward=req.GET["keyfroward"]
+        keyfroward=sriper(req.GET["keyfroward"])
     except:
         pass
     return_var_type=""
     try:
-        return_var_type=req.GET["return_var_type"]
+        return_var_type=sriper(req.GET["return_var_type"])
     except:
 	    pass
     setion=""
     try:
-        setion=req.GET["setion"]
+        setion=sriper(req.GET["setion"])
     except:
         pass
     setion2=""
     try:
-        setion2=req.GET["setion2"]
+        setion2=sriper(req.GET["setion2"])
     except:
         pass
     var1=""
     try:
-        var1=req.GET["var1"]
+        var1=sriper(req.GET["var1"])
     except:
 	    pass
     usertemplate_name=""
     try:
-        usertemplate_name=req.GET["usertemplate_name"]
+        usertemplate_name=sriper(req.GET["usertemplate_name"])
     except:
         pass
     rep=""
     try:
-        rep=req.GET["rep"]
+        rep=sriper(req.GET["rep"])
     except:
         pass
     url=""
     try:
-        url=req.GET["url"]
+        url=sriper(req.GET["url"])
     except:
         pass
     L_name=""
     try:
-        L_name=req.GET["L_name"]
+        L_name=sriper(req.GET["L_name"])
     except:
         pass
     request_type=""
     try:
-        request_type=req.GET["request_type"]
+        request_type=sriper(req.GET["request_type"])
     except:
         pass
     send_type=""
     try:
-        send_type=req.GET["send_type"]
+        send_type=sriper(req.GET["send_type"])
     except:
         pass
     send_amount=""
@@ -1192,12 +1206,12 @@ def doit(req):
 
     crypto_path=""
     try:
-        crypto_path=req.GET["crypto_path"]
+        crypto_path=sriper(req.GET["crypto_path"])
     except:
         pass
     traid_id=""
     try:
-        traid_id=req.GET["traid_id"]
+        traid_id=sriper(req.GET["traid_id"])
     except:
         pass
     request_amound=""
@@ -1207,12 +1221,12 @@ def doit(req):
         pass
     crypto_name=""
     try:
-        crypto_name=req.GET["crypto_name"]
+        crypto_name=sriper(req.GET["crypto_name"])
     except:
         pass
     crypto_key=""
     try:
-        crypto_key=req.GET["crypto_key"]
+        crypto_key=sriper(req.GET["crypto_key"])
     except:
     	pass
     if action_type=="url":
@@ -1251,7 +1265,7 @@ def doit(req):
         return HttpResponse( funtion_make_traid(user,password,send_type,send_amount,request_type,request_amound,try_to_connect())  )
     a=""
     try:
-        a=req.GET["a"]
+        a=sriper(req.GET["a"])
     except:
         pass
     if a =="re":
@@ -1264,12 +1278,12 @@ def doit(req):
     types=""
     replace=""
     try:
-        user=req.POST["user"]
-        password=req.POST["password"]
-        temmplate_name=req.POST["temmplate_name"]
-        template=req.POST["template"]
-        types=req.POST["type"]
-        replace=req.POST["replace"]
+        user=sriper(req.POST["user"])
+        password=sriper(req.POST["password"])
+        temmplate_name=sriper(req.POST["temmplate_name"])
+        template=req.POST["template"]#striped elsewere
+        types=sriper(req.POST["type"])
+        replace=sriper(req.POST["replace"])
     except:
         pass
     if types!="":
@@ -1281,18 +1295,18 @@ def doit(req):
                     randome2 = get_random_string(128)
                     setion = hashlib.sha256(randome2.encode()).hexdigest()
                     try:
-                    	make_setion(setion, try_to_connect() )
+                    	make_setion(setion, try_to_connect(),usertemplate_name )
                     except:
                     	pass
             if setion2=="":
                     randome2 = get_random_string(128)
                     setion2 = hashlib.sha256(randome2.encode()).hexdigest()
                     try:
-                        make_setion(setion2, try_to_connect() )
+                        make_setion(setion2, try_to_connect(),usertemplate_name )
                     except:
                     	pass
 
-            response = redirect('http://localhost:8000/doit?action_type=makepage&usertemplate_name='+usertemplate_name+'&var1='+var1+'&rep='+rep+'&setion='+setion+'&setion2='+setion2)
+            response = redirect(path_getter()+'/doit?action_type=makepage&usertemplate_name='+usertemplate_name+'&var1='+var1+'&rep='+rep+'&setion='+setion+'&setion2='+setion2)
             return response
         else:
             return HttpResponse(return_template(usertemplate_name,var1,setion,setion2,rep,try_to_connect() ) )
@@ -1341,4 +1355,8 @@ def get_key(path,ledgure_name,keyname,password):
 	stingout = path+"output2.php?key="+newkey+"&name="+myval+"&entery_name="+ledgure_name 
 	#print(stingout)
 	return [True,stingout,path+ledgure_name]
+
+
+
+
 

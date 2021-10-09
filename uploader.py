@@ -32,9 +32,3 @@ outputval=json.loads(val)
 webbrowser.get("firefox").open(path+"?action_type=makepage&var1=W&rep=&usertemplate_name="+"u1_mygame"+value)
 
 
-
-
-
-
-
-

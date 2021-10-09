@@ -19,7 +19,7 @@ services:
     image: mysql:8.0.19
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret2
     volumes:
       - ./data/db:/var/lib/mysql
 
