@@ -1,6 +1,7 @@
 # Dockerized App: Django + MySQL
 #thanks a thanks to https://github.com/Alejandroacho/DockerizedAppTemplate for the docker template
-All we be in one Docker container that will be already setted up to just start WIth ths hyper wiki=
+
+All we be in one Docker container that will be already setted up to just start With ths hyper wiki
 
 ## Requirements
   - Docker
@@ -30,8 +31,8 @@ All we be in one Docker container that will be already setted up to just start W
     Django admin will be available on: [http://localhost:8000/admin](http://localhost:8000/admin)
 
     Django app will be available on: [http://localhost:8000/](http://localhost:8000/)
-
-    Flower task monitor will be available on: [http://localhost:5555](http://localhost:5555)
+    
+    php myaddmin is on [http://localhost:5002/](http://localhost:5002/)
 
 ##Notes for deployment in industry settings
 The best way to scail is to go horizontally
