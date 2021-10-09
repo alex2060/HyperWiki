@@ -34,7 +34,7 @@ All we be in one Docker container that will be already setted up to just start W
 
     php myaddmin is on [http://localhost:5002/](http://localhost:5002/)
 
-##Notes for deployment in industry settings
+## Notes for deployment in industry settings
 The best way to scail is to go horizontally
 Redirect each request to for a newpage to random server all pointing to same sql database cluster.
     
