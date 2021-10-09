@@ -32,3 +32,15 @@ All we be in one Docker container that will be already setted up to just start W
     Django app will be available on: [http://localhost:8000/](http://localhost:8000/)
 
     Flower task monitor will be available on: [http://localhost:5555](http://localhost:5555)
+
+##Notes for deployment in industry settings
+The best way to scail is to go horizontally
+Redirect each request to for a newpage to random server all pointing to same sql database cluster.
+    
+    when scailing the DB Note that the underling data stuchture is a hash table.
+
+
+
+
+
+
