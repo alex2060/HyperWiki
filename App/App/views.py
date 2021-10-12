@@ -251,15 +251,15 @@ def getpost(key,usekkey,cnx,return_var_type):
 	if (check_priavate(usekkey,private,cnx)=="True"):
 		dictionary ={ 
 		  "id": key,
-		  "username": str(out[0]),
-		  "text": str(out[1]),
-		  "body": str(out[2]),
-		  "tital": str(out[3]),
-		  "time" : str(out[4]),
-		  "photo": str(out[5]),
-		  "iframe": str(out[6]),
-		  "catagoy": str(out[7]),
-		  "catagoy_2": str(out[8])
+		  "username":   str(out[0])  ,
+		  "text":       str(out[1])  ,
+		  "body":       str(out[2])  ,
+		  "tital":      str(out[3])  ,
+		  "time" :      str(out[4])  ,
+		  "photo":      str(out[5])  ,
+		  "iframe":     str(out[6])  ,
+		  "catagoy":    str(out[7])  ,
+		  "catagoy_2":  str(out[8])  
 
 		} 
 		return json.dumps(dictionary, indent = 4)
@@ -986,6 +986,12 @@ def sriper(word):
 	word=word.replace("\\" ,"(???4???)")
 	return word
 
+def unstrip(word):
+	word=word.replace("(???1???)","\"")
+	word=word.replace("(???2???)","'" )
+	word=word.replace("(???3???)","`" )
+	word=word.replace("(???4???)","\\")
+	return word
 
 
 def doit(req):

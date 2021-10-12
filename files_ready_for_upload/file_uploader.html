@@ -74,18 +74,19 @@
       for( var i=0; i < anysize; i++ ){
               result += charset[Math.floor(Math.random() * charset.length)%charset.length];
         }
-  var xhr = new XMLHttpRequest();
 
-        xhr.open("POST", "http://localhost:8000/doit", true);
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "(!P???!???P!)", true);
         xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 
         post_val = "user=u1&password=top&temmplate_name=mygame"+result+"&template="+encodeURI(val)+"&type=this&replace=!"
         console.log(post_val);
         xhr.send(post_val);
         console.log(xhr.responseText);
-        console.log("(!P???!PPP!)/doit?action_type=makepage&var=W&rep=&usertemplate_name="+"u1_mygame"+result);
 
-        document.getElementById("output").innerHTML ="<label for=\"output\" class=\"text-white\">"+"http://localhost:8000/doit?action_type=makepage&var=W&rep=&usertemplate_name=u1_mygame"+result+"</label>";
+        console.log("(!P???!???P!)/doit?action_type=makepage&var=W&rep=&usertemplate_name="+"u1_mygame"+result);
+
+        document.getElementById("output").innerHTML ="<label for=\"output\" class=\"text-white\">"+"(!P???!???P!)?action_type=makepage&rep=&usertemplate_name=u1_mygame"+result+"</label></br><button type=button onClick=\"parent.location='(!P???!???P!)?action_type=makepage&rep=&usertemplate_name=u1_mygame"+result+"'\" value='File Repository'>val</button>";
 
 
 
