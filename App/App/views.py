@@ -18,8 +18,9 @@ from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 #Connection
+cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
 def try_to_connect():
-    cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
+    global cnx
     return cnx
 
 #Path Getter
