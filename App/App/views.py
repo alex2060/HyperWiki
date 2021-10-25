@@ -18,14 +18,12 @@ from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 #Connection
-
 def try_to_connect():
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
 
 #Path Getter
 def path_getter():
-
   return "http://localhost:8000"
 
 #Home Page
@@ -33,7 +31,6 @@ def print_user(req):
     f = open("home.html", "r")
     out= f.read()
     f.close()
-
     return HttpResponse( out )
 
 #Payment Gateway For Items and Keys
@@ -56,10 +53,10 @@ def payment_gateway(req):
     except:
         pass
     cnx = try_to_connect()
-    sql= "SELECT `path`,`url` FROM `items` WHERE `itemname` LIKE \'"+item+"\';"
-        
+    sql= "SELECT `path`,`url` FROM `items` WHERE `itemname` LIKE %s;"
+    temp = (item)
     cursor = cnx.cursor()
-    cursor.execute(sql)
+    cursor.execute(sql,temp)
     counter=0
     for row in cursor:
         counter=counter+1
@@ -70,8 +67,6 @@ def payment_gateway(req):
     out = out.replace('(!A???A!)',  amount )
     out = out.replace('(!I???I!)',  item )
     cnx = try_to_connect()
-
-
     return HttpResponse(out)
 
 #Payment retun
@@ -107,7 +102,8 @@ def create_checkout(request):
         lastcheck = val.status in TRANSACTION_SUCCESS_STATUSES
         item = "";
         cnx = try_to_connect()
-        sql = "SELECT `url` FROM `items` WHERE `itemname` LIKE \'"+request.POST['Item']+"\' AND `path` LIKE \'"+request.POST['amount']+"\'"
+        sql = "SELECT `url` FROM `items` WHERE `itemname` LIKE %s AND `path` LIKE %s"
+        temp = (request.POST['Item'],request.POST['amount'])
         cursor = cnx.cursor()
         cursor.execute(sql)
         counter=0
