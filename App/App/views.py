@@ -18,12 +18,15 @@ from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 #Connection
+
 def try_to_connect():
+    #global cnx
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
 
 #Path Getter
 def path_getter():
+
   return "http://localhost:8000"
 
 #Home Page
@@ -338,7 +341,8 @@ def add_key(ledgure,password,email,message,key_message,keyfroward,cnx,return_var
   randome2 = get_random_string(128)
   solution = hashlib.sha256(randome2.encode()).hexdigest()
   hashs = hashlib.sha256(solution.encode()).hexdigest()
-  sql="INSERT INTO `a_final_Ledgur_keys` (`entery_name`, `ledgername`, `hash`, `solution`, `email`,`time`,`forward`,`key_message`) VALUES (\'"+post_id+"\', \'"+ledgure+"\', \'"+hashs+"\', 'key', \'"+email+"\', CURRENT_TIMESTAMP,\'"+keyfroward+"\',\'"+key_message+"\');";
+  sql="INSERT INTO `a_final_Ledgur_keys` (`entery_name`, `ledgername`, `hash`, `solution`, `email`,`time`,`forward`,`key_message`) VALUES (%s, %s, %s, 'key', %s, CURRENT_TIMESTAMP,%s,%s);";
+  tuple1= (post_id,ledgure,hashs,email,keyfroward,key_message)
   cursor = cnx.cursor()
   cursor.execute(sql)
   cnx.commit()

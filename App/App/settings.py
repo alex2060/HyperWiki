@@ -25,13 +25,13 @@ SECRET_KEY = 'django-insecure-8)2_6df)vsc=0pn)hu712dkej_803h7719)a4n-5!5n0cr((2l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = '*'
+ALLOWED_HOSTS = ['*']
+CORS_ORIGIN_ALLOW_ALL = True
 
 
 
 
-# Application definition
-
+# Application definition 
 DJANGO_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -43,6 +43,8 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'rest_framework',
+    'corsheaders',
+
 ]
 
 LOCAL_APPS = [
@@ -58,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
 ]
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
