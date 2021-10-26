@@ -18,9 +18,10 @@ from django.shortcuts import render
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 #Connection
-
+cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
 def try_to_connect():
     #global cnx
+    #cnx.connnection.ping()
     cnx = pymysql.connect(user='root', password='secret',host='mysql-server',database='app1')
     return cnx
 
@@ -188,7 +189,6 @@ def add_user(uname,password,email,cnx,return_var_type):
     cursor = cnx.cursor()
     cursor.execute(query3)
     cnx.commit()
-    cnx.close()
 
     return json.dumps(dictionary, indent = 4)
 
@@ -700,7 +700,8 @@ def funtion_make_traid(username, password ,traid_money_type,traid_money_amount,r
   cursor.execute(Q1,tuple1)
   cnx.commit()
   counter=0
-  cnx.close()
+
+
   dictionary ={ 
     "response": traidid,
     "amnountleft":str(amnountleft)
@@ -800,7 +801,6 @@ def compleat_traid_comand(user,password,traid_id,cnx):
   cursor = cnx.cursor()
   cursor.execute(Q0,tuple1)
   cnx.commit()
-  cnx.close()
   #print(traid_mony_type,traid_request_type,traid_request_amount,traid_money_amount,buyer,reciver)
   dictionary ={ 
     "response": traid_id,
@@ -1029,7 +1029,6 @@ def user_acount(user,cnx):
   for row in cursor:
     outsting=outsting+[ [row[0],str(row[1])] ]
   cnx.commit()
-  cnx.close()
   dictionary ={ 
     "out": outsting,
   }
